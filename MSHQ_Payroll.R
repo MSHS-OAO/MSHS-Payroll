@@ -31,7 +31,7 @@ jcdict <- function(end){
   df <- left_join(df,jobcode,by=c("Job.Code"="J.C"))
   newjc <- filter(df,is.na(J.C.DESCRIPTION))
   if(nrow(newjc) > 0){
-    newjc <- newjc %>% select(Job.Code) %>% distinct() 
+    newjc <- newjc %>% select(Job.Code,Position.Code.Description) %>% distinct() 
     write.xlsx(newjc,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/NewJC/New_Job_Codes_",Sys.Date(),".xlsx"))
     message("There are new Job Codes that need to be added to the Job Code mappings File")
   } else {
@@ -48,8 +48,8 @@ jcdict <- function(end){
 }
 #Create Department dict
 depdict <- function(end){
-  home <- df %>% select(PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.ID.Home.Department,Department.Name.Home.Dept)
-  worked <- df %>% select(PartnerOR.Health.System.ID,Home.FacilityOR.Hospital.ID,Department.IdWHERE.Worked,Department.Name.Worked.Dept)
+  home <- df %>% select(PartnerOR.Health.System.ID,Home.FacilityOR.Hospital.ID,Department.ID.Home.Department,Department.Name.Home.Dept)
+  worked <- df %>% select(PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,Department.Name.Worked.Dept)
   col <- c("Partner","Hosp","CC","CC.Description")
   colnames(home) <- col
   colnames(worked) <- col
@@ -91,7 +91,7 @@ upload <- function(start,end){
   payroll <- df %>%
     mutate(Approved = "0",
            Hours = round(as.numeric(Hours),2),
-           Expense = round(as.numeric(Expense),2)) %>%
+           Expense = round(as.numeric(Expense),2)) %>% 
     group_by(PartnerOR.Health.System.ID,Home.FacilityOR.Hospital.ID,Department.ID.Home.Department,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,Start.Date,End.Date,Employee.ID,Employee.Name,Approved,Job.Code,Pay.Code) %>%
     summarise(Hours = sum(Hours,na.rm = T),
               Expense = sum(Expense,na.rm = T))
@@ -101,28 +101,33 @@ upload <- function(start,end){
 worktrend <- function(){
   paycycle <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Pay Cycle Calendar.xlsx",col_types = "date") %>%
     select(10,12) %>%
-    mutate(Date...10 = as.Date(Date...10,format="%Y-%M-%D"),
-           `End Date` = as.Date(`End Date`,format="%Y-%M-%D"))
+    mutate(Date = as.Date(Date,format="%Y-%M-%D"),
+            End.Date = as.Date(End.Date,format="%Y-%M-%D"))
   paycode <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Pay Code Mappings/MSHQ_Paycode Vlookup_GL.xlsx") %>%
     select(c(2:5)) %>%
     filter(nchar(`Pay Code in Premier`) > 3) %>%
     distinct()
   payroll <- payroll %>% ungroup() %>% mutate(End.Date = as.Date(End.Date,format="%m/%d/%Y"))
-  trend <- left_join(payroll,paycycle,by=c("End.Date"="Date...10"))
-  trend <- left_join(trend,paycode,by=c("Pay.Code"="Pay Code in Premier")) %>%
+  trend <- left_join(payroll,paycycle,by=c("End.Date"="Date"))
+  trend <- left_join(trend,paycode,by=c("Pay.Code"="Pay Code in Premier")) 
+  trend <- trend %>%
     filter(`Premier Pay Map` %in% c("REGULAR","OTHER_WORKED","OVETIME"),
            `Include Hours` == 1) %>%
-    mutate(PP.END.DATE = as.character(`End Date`)) %>%
-    group_by(Department.IdWHERE.Worked,PP.END.DATE) %>%
-    summarise(Hours = sum(Hours,na.rm=T))
+    group_by(Department.IdWHERE.Worked,End.Date.y) %>%
+    summarise(Hours = sum(Hours,na.rm=T)) %>%
+    rename(PP.END.DATE = End.Date.y) 
   oldtrend <- readRDS("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/trend.RDS")
-  trend <- rbind(oldtrend,trend)
+  oldtrend <- mutate(oldtrend,PP.END.DATE = as.Date(PP.END.DATE,formate="%Y-%m-%d"))
+  trend <- rbind(oldtrend,trend) %>%
+    arrange(PP.END.DATE) %>%
+    mutate(PP.END.DATE = factor(PP.END.DATE))
   saveRDS(trend,"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/trend.RDS")
   new_trend <- trend %>%pivot_wider(id_cols = Department.IdWHERE.Worked,names_from = PP.END.DATE,values_from = Hours)
   return(new_trend)
 }
 #Save payroll file
 save_payroll <- function(start,end){
+  payroll <- payroll %>% mutate(End.Date = paste0(substr(End.Date,6,7),"/",substr(End.Date,9,10),"/",substr(End.Date,1,4)))
   smon <- toupper(month.abb[month(as.Date(start,format = "%m/%d/%Y"))])
   emon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   write.table(payroll,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Uploads/MSHQ_Payroll_",substr(start,4,5),smon,substr(start,7,11)," to ",substr(end,4,5),emon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
@@ -130,13 +135,14 @@ save_payroll <- function(start,end){
 ###############################################################################
 
 #Enter start and end date needed for payroll upload
-start <-"08/02/2020" 
-end <- "08/29/2020"
+start <-"08/30/2020" 
+end <- "09/26/2020"
 df <- labor(start,end)
 #If you need to update jobcode list for new jobcodes leave R and do that in excel
 #"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx"
 df <- jcdict(end)
 depdict(end)
+#Download and place department mapping file in MSH Labor folder
 depmap <- depmap(end)
 jcmap(end)
 payroll <- upload(start,end)
