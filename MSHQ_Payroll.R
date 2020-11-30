@@ -33,7 +33,7 @@ jcdict <- function(end){
   if(nrow(newjc) > 0){
     newjc <- newjc %>% select(Job.Code,Position.Code.Description) %>% distinct() 
     write.xlsx(newjc,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/NewJC/New_Job_Codes_",Sys.Date(),".xlsx"))
-    message("There are new Job Codes that need to be added to the Job Code mappings File")
+    message("There are new Job Codes that need to be added to the Job Code mappings File J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx")
   } else {
     df <- df %>%
       filter(is.na(Provider)) %>%
@@ -59,7 +59,7 @@ depdict <- function(end){
 }
 #Creates Department Mapping file for new departments
 depmap <- function(end){
-  depmap <- file.info(list.files("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor", full.names = T,pattern = ".csv"))
+  depmap <- file.info(list.files("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Dep Mapping Downloads", full.names = T,pattern = ".csv"))
   depmap <- read.csv(rownames(depmap)[which.max(depmap$mtime)], header = F,stringsAsFactors = F) %>% distinct()
   depmap <- left_join(df,depmap,by=c("Department.IdWHERE.Worked"="V3")) %>%
     mutate(Effective = "01012010")
@@ -121,7 +121,7 @@ worktrend <- function(){
   trend <- rbind(oldtrend,trend) %>%
     arrange(PP.END.DATE) %>%
     mutate(PP.END.DATE = factor(PP.END.DATE))
-  saveRDS(trend,"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/trend.RDS")
+  trend <<- trend
   new_trend <- trend %>%pivot_wider(id_cols = Department.IdWHERE.Worked,names_from = PP.END.DATE,values_from = Hours)
   return(new_trend)
 }
@@ -131,12 +131,14 @@ save_payroll <- function(start,end){
   smon <- toupper(month.abb[month(as.Date(start,format = "%m/%d/%Y"))])
   emon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   write.table(payroll,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Uploads/MSHQ_Payroll_",substr(start,4,5),smon,substr(start,7,11)," to ",substr(end,4,5),emon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
+  saveRDS(trend,"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/trend.RDS")
+  write.table(new_trend,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/CC Worked Trend_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = T)
 }
 ###############################################################################
 
 #Enter start and end date needed for payroll upload
-start <-"08/30/2020" 
-end <- "09/26/2020"
+start <-"09/27/2020" 
+end <- "10/24/2020"
 df <- labor(start,end)
 #If you need to update jobcode list for new jobcodes leave R and do that in excel
 #"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx"
