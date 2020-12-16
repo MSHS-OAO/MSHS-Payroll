@@ -9,13 +9,16 @@ library(xlsx)
 
 #Read most recent MSHQ payroll file, filter on dates and format columns
 labor <- function(start,end){
+  #read paycode mapping file
   paycode <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Pay Code Mappings/MSHQ_Paycode Vlookup_GL.xlsx") %>%
     select(1,2)
+  #read in most recent oracle text file and filter on start and end dates
   df <- file.info(list.files("C:/Users/lenang01/Documents/MSH-MSQ-Payroll/MSHQ Oracle", full.names = T))
   df <- read.csv(rownames(df)[which.max(df$mtime)], header = T,sep = "~",stringsAsFactors = F,colClasses = rep("character",32)) %>%
     filter(as.Date(End.Date,format = "%m/%d/%Y") <= as.Date(end,format = "%m/%d/%Y"),
            as.Date(Start.Date,format = "%m/%d/%Y") >= as.Date(start,format = "%m/%d/%Y"),
            !is.na(Job.Code))
+  #format paycode, employee name, Department names, and home department ID
   df <- left_join(df,paycode,by=c("Pay.Code"="Full Paycode")) %>%
     mutate(Pay.Code = `Pay Code in Premier`,
            `Pay Code in Premier` = NULL,
@@ -27,67 +30,90 @@ labor <- function(start,end){
 }
 #Create JCdict and find new job codes
 jcdict <- function(end){
+  #read current job code mapping file
   jobcode <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx")
   df <- left_join(df,jobcode,by=c("Job.Code"="J.C"))
+  #create data frame with job codes not found in job code mapping file
   newjc <- filter(df,is.na(J.C.DESCRIPTION))
+  #check for new job codes
   if(nrow(newjc) > 0){
+    #if new job codes then place in new job codes folder and update job code mapping file
     newjc <- newjc %>% select(Job.Code,Position.Code.Description) %>% distinct() 
     write.xlsx(newjc,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/NewJC/New_Job_Codes_",Sys.Date(),".xlsx"))
     message("There are new Job Codes that need to be added to the Job Code mappings File J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx")
   } else {
+    #if no job codes then remove providers and format job code description
     df <- df %>%
       filter(is.na(Provider)) %>%
       mutate(Position.Code.Description = `Description in Premier (50 character limit)`)
   }
+  #create job code dictionary
   jcdict <- df %>%
     select(PartnerOR.Health.System.ID,Home.FacilityOR.Hospital.ID,Department.IdWHERE.Worked,Job.Code,Position.Code.Description) %>%
     distinct()
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
+  #save new job code dictionary
   write.table(jcdict,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/JCDict/MSHQ_JCdict_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
   return(df)
 }
 #Create Department dict
 depdict <- function(end){
+  #take all home and worked departments and form department dictionaries
   home <- df %>% select(PartnerOR.Health.System.ID,Home.FacilityOR.Hospital.ID,Department.ID.Home.Department,Department.Name.Home.Dept)
   worked <- df %>% select(PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,Department.Name.Worked.Dept)
   col <- c("Partner","Hosp","CC","CC.Description")
   colnames(home) <- col
   colnames(worked) <- col
+  #combine home and worked department dictionaries and remove duplicates
   depdict <- rbind(home,worked) %>% distinct()
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
+  #save department dictionary
   write.table(depdict,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/DepDict/MSHQ_DepDict_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
 }
 #Creates Department Mapping file for new departments
 depmap <- function(end){
+  #read most recent department mapping download
   depmap <- file.info(list.files("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Dep Mapping Downloads", full.names = T,pattern = ".csv"))
   depmap <- read.csv(rownames(depmap)[which.max(depmap$mtime)], header = F,stringsAsFactors = F) %>% distinct()
+  #leftjoin formatted raw file with department mapping file
   depmap <- left_join(df,depmap,by=c("Department.IdWHERE.Worked"="V3")) %>%
     mutate(Effective = "01012010")
+  #place any unmapped departments in a dataframe
   newdep <- depmap %>% filter(is.na(V5)) %>% select(Effective,PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,V5) %>% distinct()
   if(nrow(newdep) > 0){
+    #if new departments then create mapping file
     newdep <- newdep %>% mutate(V5 = "10095")
     depmap <- depmap %>% filter(!is.na(V5)) %>% select(Effective,PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,V5) %>% distinct()
+    #combine all previously mapped departments and newly mapped departments
     depmap <- rbind(depmap,newdep)
   } else {
+    #if no new departments create mapping file with current department mappings
     depmap <- depmap %>% filter(!is.na(V5)) %>% select(Effective,PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,V5) %>% distinct() 
   }
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
+  #save new department mappign file
   write.table(depmap,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/DepMap/MSHQ_DepMap_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
   return(depmap)
 }
 #Create JC mapping file
 jcmap <- function(end){
+  #join formatted labor file with new department mapping
   jcmap <- left_join(df,depmap,by=c("Department.IdWHERE.Worked"="Department.IdWHERE.Worked")) 
+  #check again for unmapped departments
   newdep <- filter(jcmap,is.na(V5)) 
   if(nrow(newdep) > 0){
+    #if still unmapped departments, tell user the department mappings was not updated correctly
     message("Deparment mapping was not updated correctly")
   }
+  #if everything is mapped then create jobcode mapping file
   jcmap <- jcmap %>% select(Effective,PartnerOR.Health.System.ID.x,Facility.Hospital.Id_Worked.x,Department.IdWHERE.Worked,Job.Code,V5,`Premier ID Code`) %>% mutate(Allocation = "100") %>% distinct()
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
+  #save jc mapping
   write.table(jcmap,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/JCmap/MSHQ_JCMap_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
 }
 #Create payroll upload
 upload <- function(start,end){
+  #create payroll upload
   payroll <- df %>%
     mutate(Approved = "0",
            Hours = round(as.numeric(Hours),2),
@@ -99,39 +125,51 @@ upload <- function(start,end){
 }
 #Trend worked Hours by cost center
 worktrend <- function(){
+  #read in paycycle calander
   paycycle <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Pay Cycle Calendar.xlsx",col_types = "date") %>%
     select(10,12) %>%
     mutate(Date = as.Date(Date,format="%Y-%M-%D"),
             End.Date = as.Date(End.Date,format="%Y-%M-%D"))
+  #read in paycode mapping file
   paycode <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Pay Code Mappings/MSHQ_Paycode Vlookup_GL.xlsx") %>%
     select(c(2:5)) %>%
     filter(nchar(`Pay Code in Premier`) > 3) %>%
     distinct()
-  payroll <- payroll %>% ungroup() %>% mutate(End.Date = as.Date(End.Date,format="%m/%d/%Y"))
-  trend <- left_join(payroll,paycycle,by=c("End.Date"="Date"))
+  trend <- payroll %>% ungroup() %>% mutate(End.Date = as.Date(End.Date,format="%m/%d/%Y"))
+  #bring in pay period end date to prepared upload file
+  trend <- left_join(trend,paycycle,by=c("End.Date"="Date"))
+  #bring in paycode mappings to prepared upload file
   trend <- left_join(trend,paycode,by=c("Pay.Code"="Pay Code in Premier")) 
   trend <- trend %>%
+    #filter on productive and included hours
     filter(`Premier Pay Map` %in% c("REGULAR","OTHER_WORKED","OVETIME"),
            `Include Hours` == 1) %>%
     group_by(Department.IdWHERE.Worked,End.Date.y) %>%
+    #summarise hours by worked department by pay period end date
     summarise(Hours = sum(Hours,na.rm=T)) %>%
-    rename(PP.END.DATE = End.Date.y) 
+    rename(PP.END.DATE = End.Date.y)
+  #read in old trend
   oldtrend <- readRDS("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/trend.RDS")
   oldtrend <- mutate(oldtrend,PP.END.DATE = as.Date(PP.END.DATE,formate="%Y-%m-%d"))
+  #append new trended data to oldtrend
   trend <- rbind(oldtrend,trend) %>%
     arrange(PP.END.DATE) %>%
     mutate(PP.END.DATE = factor(PP.END.DATE))
   trend <<- trend
+  #create worked FTE trend table with newly appended data
   new_trend <- trend %>%pivot_wider(id_cols = Department.IdWHERE.Worked,names_from = PP.END.DATE,values_from = Hours)
   return(new_trend)
 }
 #Save payroll file
 save_payroll <- function(start,end){
-  payroll <- payroll %>% mutate(End.Date = paste0(substr(End.Date,6,7),"/",substr(End.Date,9,10),"/",substr(End.Date,1,4)))
+  #payroll <- payroll %>% mutate(End.Date = paste0(substr(End.Date,6,7),"/",substr(End.Date,9,10),"/",substr(End.Date,1,4)))
   smon <- toupper(month.abb[month(as.Date(start,format = "%m/%d/%Y"))])
   emon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
+  #save payroll upload
   write.table(payroll,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Uploads/MSHQ_Payroll_",substr(start,4,5),smon,substr(start,7,11)," to ",substr(end,4,5),emon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
+  #save trend data in RDS form
   saveRDS(trend,"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/trend.RDS")
+  #save pivoted trend table as .csv
   write.table(new_trend,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/CC Worked Trend_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = T)
 }
 ###############################################################################
