@@ -165,6 +165,7 @@ save_payroll <- function(start,end){
   #payroll <- payroll %>% mutate(End.Date = paste0(substr(End.Date,6,7),"/",substr(End.Date,9,10),"/",substr(End.Date,1,4)))
   smon <- toupper(month.abb[month(as.Date(start,format = "%m/%d/%Y"))])
   emon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
+  mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   #save payroll upload
   write.table(payroll,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Uploads/MSHQ_Payroll_",substr(start,4,5),smon,substr(start,7,11)," to ",substr(end,4,5),emon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
   #save trend data in RDS form
@@ -175,8 +176,8 @@ save_payroll <- function(start,end){
 ###############################################################################
 
 #Enter start and end date needed for payroll upload
-start <-"09/27/2020" 
-end <- "10/24/2020"
+start <-"10/25/2020" 
+end <- "11/21/2020"
 df <- labor(start,end)
 #If you need to update jobcode list for new jobcodes leave R and do that in excel
 #"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx"
