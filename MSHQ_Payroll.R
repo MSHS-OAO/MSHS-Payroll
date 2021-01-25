@@ -176,11 +176,12 @@ save_payroll <- function(start,end){
 ###############################################################################
 
 #Enter start and end date needed for payroll upload
-start <-"10/25/2020" 
-end <- "11/21/2020"
+start <-"11/22/2020" 
+end <- "01/02/2021"
 df <- labor(start,end)
 #If you need to update jobcode list for new jobcodes leave R and do that in excel
 #"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx"
+#Also update two JC mapping files for FTE Trend Dashboard
 df <- jcdict(end)
 depdict(end)
 #Download and place department mapping file in MSH Labor folder
