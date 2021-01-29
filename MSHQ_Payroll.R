@@ -19,13 +19,18 @@ labor <- function(start,end){
            as.Date(Start.Date,format = "%m/%d/%Y") >= as.Date(start,format = "%m/%d/%Y"),
            !is.na(Job.Code))
   #format paycode, employee name, Department names, and home department ID
-  df <- left_join(df,paycode,by=c("Pay.Code"="Full Paycode")) %>%
-    mutate(Pay.Code = `Pay Code in Premier`,
-           `Pay Code in Premier` = NULL,
-           Employee.Name = substr(Employee.Name,1,30),
-           Department.Name.Worked.Dept = substr(Department.Name.Worked.Dept,1,50),
-           Department.Name.Home.Dept = substr(Department.Name.Home.Dept,1,50),
-           Department.ID.Home.Department = paste0(substr(Full.COA.for.Home,1,3),substr(Full.COA.for.Home,41,44),substr(Full.COA.for.Home,5,7),substr(Full.COA.for.Home,12,16)))
+  df <- left_join(df,paycode,by=c("Pay.Code"="Full Paycode"))
+  if(nrow(filter(df,is.na(`Pay Code in Premier`))) == 0){
+    df <- df %>%
+      mutate(Pay.Code = `Pay Code in Premier`,
+             `Pay Code in Premier` = NULL,
+             Employee.Name = substr(Employee.Name,1,30),
+             Department.Name.Worked.Dept = substr(Department.Name.Worked.Dept,1,50),
+             Department.Name.Home.Dept = substr(Department.Name.Home.Dept,1,50),
+             Department.ID.Home.Department = paste0(substr(Full.COA.for.Home,1,3),substr(Full.COA.for.Home,41,44),substr(Full.COA.for.Home,5,7),substr(Full.COA.for.Home,12,16)))
+  } else {
+    errorCondition("New Paycode")
+  }
   return(df)
 }
 #Create JCdict and find new job codes
@@ -152,10 +157,14 @@ worktrend <- function(){
   oldtrend <- readRDS("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/trend.RDS")
   oldtrend <- mutate(oldtrend,PP.END.DATE = as.Date(PP.END.DATE,formate="%Y-%m-%d"))
   #append new trended data to oldtrend
-  trend <- rbind(oldtrend,trend) %>%
-    arrange(PP.END.DATE) %>%
-    mutate(PP.END.DATE = factor(PP.END.DATE))
-  trend <<- trend
+  if(max(oldtrend$PP.END.DATE < min(trend$PP.END.DATE))){
+    trend <- rbind(oldtrend,trend) %>%
+      arrange(PP.END.DATE) %>%
+      mutate(PP.END.DATE = factor(PP.END.DATE))
+    trend <<- trend
+  } else {
+    errorCondition("data overlaps with old master")
+  }
   #create worked FTE trend table with newly appended data
   new_trend <- trend %>%pivot_wider(id_cols = Department.IdWHERE.Worked,names_from = PP.END.DATE,values_from = Hours)
   return(new_trend)
