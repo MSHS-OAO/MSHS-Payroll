@@ -36,7 +36,7 @@ labor <- function(start,end){
 #Create JCdict and find new job codes
 jcdict <- function(end){
   #read current job code mapping file
-  jobcode <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx")
+  jobcode <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/Copy of MSH MSQ Position Mappings.xlsx")
   df <- left_join(df,jobcode,by=c("Job.Code"="J.C"))
   #create data frame with job codes not found in job code mapping file
   newjc <- filter(df,is.na(J.C.DESCRIPTION))
@@ -185,8 +185,8 @@ save_payroll <- function(start,end){
 ###############################################################################
 
 #Enter start and end date needed for payroll upload
-start <-"01/31/2021" 
-end <- "02/27/2021"
+start <-"02/28/2021" 
+end <- "03/27/2021"
 df <- labor(start,end)
 #If you need to update jobcode list for new jobcodes leave R and do that in excel
 #"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx"
