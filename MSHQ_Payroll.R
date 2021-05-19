@@ -10,24 +10,40 @@ library(xlsx)
 #Read most recent MSHQ payroll file, filter on dates and format columns
 labor <- function(start,end){
   #read paycode mapping file
-  paycode <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Pay Code Mappings/MSHQ_Paycode Vlookup_GL.xlsx") %>%
-    select(1,2)
+  paycode <- read_xlsx(paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
+                              "Productivity/Universal Data/Mapping/",
+                              "MSHS_Paycode_Mapping.xlsx")) %>% 
+    select(RAW.PAY.CODE,PAY.CODE)
   #read in most recent oracle text file and filter on start and end dates
-  df <- file.info(list.files("C:/Users/lenang01/Documents/MSH-MSQ-Payroll/MSHQ Oracle", full.names = T))
-  df <- read.csv(rownames(df)[which.max(df$mtime)], header = T,sep = "~",stringsAsFactors = F,colClasses = rep("character",32)) %>%
-    filter(as.Date(End.Date,format = "%m/%d/%Y") <= as.Date(end,format = "%m/%d/%Y"),
-           as.Date(Start.Date,format = "%m/%d/%Y") >= as.Date(start,format = "%m/%d/%Y"),
+  df <- file.info(list.files(paste0("C:/Users/lenang01/Documents/",
+                                    "FTE-Projections-Dashboard/",
+                                    "Raw Data/MSHQ Oracle"), full.names = T))
+  df <- read.csv(rownames(df)[which.max(df$mtime)], header = T, sep = "~",
+                 stringsAsFactors = F, colClasses = rep("character", 32)) %>%
+    filter(as.Date(End.Date, format = "%m/%d/%Y") <= 
+             as.Date(end, format = "%m/%d/%Y"),
+           as.Date(Start.Date, format = "%m/%d/%Y") >= 
+             as.Date(start, format = "%m/%d/%Y"),
            !is.na(Job.Code))
   #format paycode, employee name, Department names, and home department ID
-  df <- left_join(df,paycode,by=c("Pay.Code"="Full Paycode"))
-  if(nrow(filter(df,is.na(`Pay Code in Premier`))) == 0){
+  df <- left_join(df,paycode,by=c("Pay.Code"="RAW.PAY.CODE"))
+  if(nrow(filter(df, is.na(PAY.CODE))) == 0){
     df <- df %>%
-      mutate(Pay.Code = `Pay Code in Premier`,
-             `Pay Code in Premier` = NULL,
+      mutate(Pay.Code = PAY.CODE,
+             PAY.CODE = NULL,
              Employee.Name = substr(Employee.Name,1,30),
-             Department.Name.Worked.Dept = substr(Department.Name.Worked.Dept,1,50),
-             Department.Name.Home.Dept = substr(Department.Name.Home.Dept,1,50),
-             Department.ID.Home.Department = paste0(substr(Full.COA.for.Home,1,3),substr(Full.COA.for.Home,41,44),substr(Full.COA.for.Home,5,7),substr(Full.COA.for.Home,12,16)))
+             Department.Name.Worked.Dept = substr(Department.Name.Worked.Dept,
+                                                  1,50),
+             Department.Name.Home.Dept = substr(Department.Name.Home.Dept,
+                                                1,50),
+             Department.ID.Home.Department = paste0(substr(Full.COA.for.Home,
+                                                           1,3),
+                                                    substr(Full.COA.for.Home,
+                                                           41,44),
+                                                    substr(Full.COA.for.Home,
+                                                           5,7),
+                                                    substr(Full.COA.for.Home,
+                                                           12,16)))
   } else {
     errorCondition("New Paycode")
   }
@@ -36,7 +52,9 @@ labor <- function(start,end){
 #Create JCdict and find new job codes
 jcdict <- function(end){
   #read current job code mapping file
-  jobcode <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/Copy of MSH MSQ Position Mappings.xlsx")
+  jobcode <- read_xlsx(paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
+                              "Productivity/Universal Data/Mapping/",
+                              "MSHS_Jobcode_Mapping.xlsx"))
   df <- left_join(df,jobcode,by=c("Job.Code"="J.C"))
   #create data frame with job codes not found in job code mapping file
   newjc <- filter(df,is.na(J.C.DESCRIPTION))
@@ -44,17 +62,24 @@ jcdict <- function(end){
   if(nrow(newjc) > 0){
     #if new job codes then place in new job codes folder and update job code mapping file
     newjc <- newjc %>% select(Job.Code,Position.Code.Description) %>% distinct() 
-    write.xlsx(newjc,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/NewJC/New_Job_Codes_",Sys.Date(),".xlsx"))
-    message("There are new Job Codes that need to be added to the Job Code mappings File J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx")
+    write.xlsx(newjc,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
+                            "Productivity/Labor - Data/MSH/Payroll/MSH Labor/",
+                            "Calculation Worksheets/NewJC/New_Job_Codes_",
+                            Sys.Date(),".xlsx"))
+    message(paste0("There are new Job Codes that need to be added to the Job",
+                   "Code mappings File J:/deans/Presidents/SixSigma/",
+                   "MSHS Productivity/Productivity/Universal Data/Mapping/",
+                   "MSHS_Jobcode_Mapping.xlsx"))
   } else {
     #if no job codes then remove providers and format job code description
     df <- df %>%
-      filter(is.na(Provider)) %>%
-      mutate(Position.Code.Description = `Description in Premier (50 character limit)`)
+      filter(PROVIDER == 0) %>%
+      mutate(Position.Code.Description = substr(Position.Code.Description,1,50))
   }
   #create job code dictionary
   jcdict <- df %>%
-    select(PartnerOR.Health.System.ID,Home.FacilityOR.Hospital.ID,Department.IdWHERE.Worked,Job.Code,Position.Code.Description) %>%
+    select(PartnerOR.Health.System.ID, Home.FacilityOR.Hospital.ID,
+           Department.IdWHERE.Worked, Job.Code, Position.Code.Description) %>%
     distinct()
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   #save new job code dictionary
@@ -64,8 +89,12 @@ jcdict <- function(end){
 #Create Department dict
 depdict <- function(end){
   #take all home and worked departments and form department dictionaries
-  home <- df %>% select(PartnerOR.Health.System.ID,Home.FacilityOR.Hospital.ID,Department.ID.Home.Department,Department.Name.Home.Dept)
-  worked <- df %>% select(PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,Department.Name.Worked.Dept)
+  home <- df %>% 
+    select(PartnerOR.Health.System.ID, Home.FacilityOR.Hospital.ID,
+           Department.ID.Home.Department,Department.Name.Home.Dept)
+  worked <- df %>% 
+    select(PartnerOR.Health.System.ID, Facility.Hospital.Id_Worked,
+           Department.IdWHERE.Worked,Department.Name.Worked.Dept)
   col <- c("Partner","Hosp","CC","CC.Description")
   colnames(home) <- col
   colnames(worked) <- col
@@ -73,7 +102,11 @@ depdict <- function(end){
   depdict <- rbind(home,worked) %>% distinct()
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   #save department dictionary
-  write.table(depdict,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/DepDict/MSHQ_DepDict_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
+  write.table(depdict,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
+                             "Productivity/Labor - Data/MSH/Payroll/MSH Labor/",
+                             "Calculation Worksheets/DepDict/MSHQ_DepDict_",
+                             substr(end,4,5),mon,substr(end,7,11),".csv"),
+              sep=",",row.names = F,col.names = F)
 }
 #Creates Department Mapping file for new departments
 depmap <- function(end){
@@ -185,8 +218,8 @@ save_payroll <- function(start,end){
 ###############################################################################
 
 #Enter start and end date needed for payroll upload
-start <-"02/28/2021" 
-end <- "03/27/2021"
+start <-"03/28/2021" 
+end <- "04/24/2021"
 df <- labor(start,end)
 #If you need to update jobcode list for new jobcodes leave R and do that in excel
 #"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx"
