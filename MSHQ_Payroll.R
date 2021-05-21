@@ -159,7 +159,8 @@ depmap <- function(end){
 #Create JC mapping file
 jcmap <- function(end){
   #join formatted labor file with new department mapping
-  jcmap <- left_join(df,depmap,by=c("Department.IdWHERE.Worked"="Department.IdWHERE.Worked")) 
+  jcmap <- left_join(
+    df,depmap,by=c("Department.IdWHERE.Worked"="Department.IdWHERE.Worked")) 
   #check again for unmapped departments
   newdep <- filter(jcmap,is.na(V5)) 
   if(nrow(newdep) > 0){
@@ -167,10 +168,19 @@ jcmap <- function(end){
     message("Deparment mapping was not updated correctly")
   }
   #if everything is mapped then create jobcode mapping file
-  jcmap <- jcmap %>% select(Effective,PartnerOR.Health.System.ID.x,Facility.Hospital.Id_Worked.x,Department.IdWHERE.Worked,Job.Code,V5,`Premier ID Code`) %>% mutate(Allocation = "100") %>% distinct()
+  jcmap <- jcmap %>% 
+    select(Effective, PartnerOR.Health.System.ID.x,
+           Facility.Hospital.Id_Worked.x,Department.IdWHERE.Worked,Job.Code,V5,
+           PREMIER.J.C) %>% 
+    mutate(Allocation = "100") %>% 
+    distinct()
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   #save jc mapping
-  write.table(jcmap,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/JCmap/MSHQ_JCMap_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
+  write.table(jcmap,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
+                           "Productivity/Labor - Data/MSH/Payroll/MSH Labor/",
+                           "Calculation Worksheets/JCmap/MSHQ_JCMap_",
+                           substr(end,4,5),mon,substr(end,7,11),".csv"),
+              sep=",",row.names = F,col.names = F)
 }
 #Create payroll upload
 upload <- function(start,end){
