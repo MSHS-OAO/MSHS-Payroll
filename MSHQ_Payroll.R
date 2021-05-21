@@ -250,16 +250,28 @@ worktrend <- function(){
 }
 #Save payroll file
 save_payroll <- function(start,end){
-  #payroll <- payroll %>% mutate(End.Date = paste0(substr(End.Date,6,7),"/",substr(End.Date,9,10),"/",substr(End.Date,1,4)))
+  #establish dates for saving files
   smon <- toupper(month.abb[month(as.Date(start,format = "%m/%d/%Y"))])
   emon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   #save payroll upload
-  write.table(payroll,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Uploads/MSHQ_Payroll_",substr(start,4,5),smon,substr(start,7,11)," to ",substr(end,4,5),emon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
+  write.table(payroll,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
+                             "Productivity/Labor - Data/MSH/Payroll/MSH Labor/",
+                             "Calculation Worksheets/Uploads/MSHQ_Payroll_",
+                             substr(start,4,5),smon,substr(start,7,11)," to ",
+                             substr(end,4,5),emon,substr(end,7,11),".csv"),
+              sep=",",row.names = F,col.names = F)
   #save trend data in RDS form
-  saveRDS(trend,"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/trend.RDS")
+  saveRDS(trend,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
+                      "Productivity/Labor - Data/MSH/Payroll/MSH Labor/",
+                      "Calculation Worksheets/Worked Trend/trend.RDS"))
   #save pivoted trend table as .csv
-  write.table(new_trend,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/CC Worked Trend_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = T)
+  write.table(new_trend,paste0("J:/deans/Presidents/SixSigma/",
+                               "MSHS Productivity/Productivity/Labor - Data/",
+                               "MSH/Payroll/MSH Labor/Calculation Worksheets/",
+                               "Worked Trend/CC Worked Trend_",
+                               substr(end,4,5),mon,substr(end,7,11),".csv"),
+              sep=",",row.names = F,col.names = T)
 }
 ###############################################################################
 
