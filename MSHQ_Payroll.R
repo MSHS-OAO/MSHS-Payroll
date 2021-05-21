@@ -200,33 +200,40 @@ upload <- function(start,end){
 #Trend worked Hours by cost center
 worktrend <- function(){
   #read in paycycle calander
-  paycycle <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Pay Cycle Calendar.xlsx",col_types = "date") %>%
-    select(10,12) %>%
-    mutate(Date = as.Date(Date,format="%Y-%M-%D"),
-            End.Date = as.Date(End.Date,format="%Y-%M-%D"))
+  paycycle <- read_xlsx(paste0("J:/deans/Presidents/SixSigma/",
+                               "MSHS Productivity/Productivity/Universal Data/",
+                               "Mapping/MSHS_Pay_Cycle.xlsx")) %>%
+    select(DATE, END.DATE) %>%
+    mutate(DATE = as.Date(DATE),
+           END.DATE = as.Date(END.DATE))
   #read in paycode mapping file
-  paycode <- read_excel("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Pay Code Mappings/MSHQ_Paycode Vlookup_GL.xlsx") %>%
-    select(c(2:5)) %>%
-    filter(nchar(`Pay Code in Premier`) > 3) %>%
-    distinct()
-  trend <- payroll %>% ungroup() %>% mutate(End.Date = as.Date(End.Date,format="%m/%d/%Y"))
+  paycode <- read_xlsx(paste0("J:/deans/Presidents/SixSigma/",
+                               "MSHS Productivity/Productivity/Universal Data/",
+                               "Mapping/MSHS_Paycode_Mapping.xlsx")) %>%
+    select(RAW.PAY.CODE, PAY.CODE.CATEGORY, INCLUDE.HOURS, INCLUDE.EXPENSES) 
+  trend <- payroll %>% 
+    ungroup() %>% 
+    mutate(End.Date = as.Date(End.Date,format="%m/%d/%Y"))
   #bring in pay period end date to prepared upload file
-  trend <- left_join(trend,paycycle,by=c("End.Date"="Date"))
+  trend <- left_join(trend,paycycle,by=c("End.Date"="DATE"))
   #bring in paycode mappings to prepared upload file
-  trend <- left_join(trend,paycode,by=c("Pay.Code"="Pay Code in Premier")) 
+  trend <- left_join(trend,paycode,by=c("Pay.Code"="RAW.PAY.CODE")) 
   trend <- trend %>%
     #filter on productive and included hours
-    filter(`Premier Pay Map` %in% c("REGULAR","OTHER_WORKED","OVETIME"),
-           `Include Hours` == 1) %>%
-    group_by(Department.IdWHERE.Worked,End.Date.y) %>%
+    filter(PAY.CODE.CATEGORY %in% c("REGULAR","OTHER_WORKED","OVETIME"),
+           INCLUDE.HOURS == 1) %>%
+    group_by(Department.IdWHERE.Worked,END.DATE) %>%
     #summarise hours by worked department by pay period end date
     summarise(Hours = sum(Hours,na.rm=T)) %>%
-    rename(PP.END.DATE = End.Date.y)
+    rename(PP.END.DATE = END.DATE)
   #read in old trend
-  oldtrend <- readRDS("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/Worked Trend/trend.RDS")
-  oldtrend <- mutate(oldtrend,PP.END.DATE = as.Date(PP.END.DATE,formate="%Y-%m-%d"))
+  oldtrend <- readRDS(paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
+                             "Productivity/Labor - Data/MSH/Payroll/MSH Labor/",
+                             "Calculation Worksheets/Worked Trend/trend.RDS"))
+  oldtrend <- mutate(oldtrend,
+                     PP.END.DATE = as.Date(PP.END.DATE,formate="%Y-%m-%d"))
   #append new trended data to oldtrend
-  if(max(oldtrend$PP.END.DATE < min(trend$PP.END.DATE))){
+  if(max(oldtrend$PP.END.DATE) < min(trend$PP.END.DATE)){
     trend <- rbind(oldtrend,trend) %>%
       arrange(PP.END.DATE) %>%
       mutate(PP.END.DATE = factor(PP.END.DATE))
@@ -235,7 +242,10 @@ worktrend <- function(){
     errorCondition("data overlaps with old master")
   }
   #create worked FTE trend table with newly appended data
-  new_trend <- trend %>%pivot_wider(id_cols = Department.IdWHERE.Worked,names_from = PP.END.DATE,values_from = Hours)
+  new_trend <- trend %>% 
+    pivot_wider(id_cols = Department.IdWHERE.Worked,
+                names_from = PP.END.DATE,
+                values_from = Hours)
   return(new_trend)
 }
 #Save payroll file
