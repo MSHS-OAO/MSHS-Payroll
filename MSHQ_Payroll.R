@@ -111,26 +111,49 @@ depdict <- function(end){
 #Creates Department Mapping file for new departments
 depmap <- function(end){
   #read most recent department mapping download
-  depmap <- file.info(list.files("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Dep Mapping Downloads", full.names = T,pattern = ".csv"))
-  depmap <- read.csv(rownames(depmap)[which.max(depmap$mtime)], header = F,stringsAsFactors = F) %>% distinct()
+  depmap <- file.info(list.files(paste0("J:/deans/Presidents/SixSigma/",
+                                        "MSHS Productivity/Productivity/",
+                                        "Labor - Data/MSH/Payroll/MSH Labor/",
+                                        "Dep Mapping Downloads"), 
+                                        full.names = T,pattern = ".csv"))
+  depmap <- read.csv(rownames(depmap)[which.max(depmap$mtime)], 
+                     header = F,stringsAsFactors = F) %>% 
+    distinct()
   #leftjoin formatted raw file with department mapping file
   depmap <- left_join(df,depmap,by=c("Department.IdWHERE.Worked"="V3")) %>%
     mutate(Effective = "01012010")
   #place any unmapped departments in a dataframe
-  newdep <- depmap %>% filter(is.na(V5)) %>% select(Effective,PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,V5) %>% distinct()
+  newdep <- depmap %>% 
+    filter(is.na(V5)) %>% 
+    select(Effective, PartnerOR.Health.System.ID, Facility.Hospital.Id_Worked,
+           Department.IdWHERE.Worked,V5) %>% 
+    distinct()
   if(nrow(newdep) > 0){
     #if new departments then create mapping file
-    newdep <- newdep %>% mutate(V5 = "10095")
-    depmap <- depmap %>% filter(!is.na(V5)) %>% select(Effective,PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,V5) %>% distinct()
+    newdep <- newdep %>% 
+      mutate(V5 = "10095")
+    depmap <- depmap %>% 
+      filter(!is.na(V5)) %>% 
+      select(Effective, PartnerOR.Health.System.ID, Facility.Hospital.Id_Worked,
+             Department.IdWHERE.Worked,V5) %>% 
+      distinct()
     #combine all previously mapped departments and newly mapped departments
     depmap <- rbind(depmap,newdep)
   } else {
     #if no new departments create mapping file with current department mappings
-    depmap <- depmap %>% filter(!is.na(V5)) %>% select(Effective,PartnerOR.Health.System.ID,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,V5) %>% distinct() 
+    depmap <- depmap %>% 
+      filter(!is.na(V5)) %>% 
+      select(Effective, PartnerOR.Health.System.ID, Facility.Hospital.Id_Worked,
+             Department.IdWHERE.Worked,V5) %>% 
+      distinct() 
   }
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   #save new department mappign file
-  write.table(depmap,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Labor - Data/MSH/Payroll/MSH Labor/Calculation Worksheets/DepMap/MSHQ_DepMap_",substr(end,4,5),mon,substr(end,7,11),".csv"),sep=",",row.names = F,col.names = F)
+  write.table(depmap,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
+                            "Productivity/Labor - Data/MSH/Payroll/MSH Labor/",
+                            "Calculation Worksheets/DepMap/MSHQ_DepMap_",
+                            substr(end,4,5),mon,substr(end,7,11),".csv")
+              ,sep=",",row.names = F,col.names = F)
   return(depmap)
 }
 #Create JC mapping file
