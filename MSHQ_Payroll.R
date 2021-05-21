@@ -189,7 +189,10 @@ upload <- function(start,end){
     mutate(Approved = "0",
            Hours = round(as.numeric(Hours),2),
            Expense = round(as.numeric(Expense),2)) %>% 
-    group_by(PartnerOR.Health.System.ID,Home.FacilityOR.Hospital.ID,Department.ID.Home.Department,Facility.Hospital.Id_Worked,Department.IdWHERE.Worked,Start.Date,End.Date,Employee.ID,Employee.Name,Approved,Job.Code,Pay.Code) %>%
+    group_by(PartnerOR.Health.System.ID, Home.FacilityOR.Hospital.ID,
+             Department.ID.Home.Department, Facility.Hospital.Id_Worked,
+             Department.IdWHERE.Worked, Start.Date, End.Date, Employee.ID,
+             Employee.Name,Approved,Job.Code,Pay.Code) %>%
     summarise(Hours = sum(Hours,na.rm = T),
               Expense = sum(Expense,na.rm = T))
   return(payroll)
