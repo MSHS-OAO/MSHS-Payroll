@@ -99,7 +99,9 @@ depdict <- function(end){
   colnames(home) <- col
   colnames(worked) <- col
   #combine home and worked department dictionaries and remove duplicates
-  depdict <- rbind(home,worked) %>% distinct()
+  depdict <- rbind(home,worked) %>% 
+    mutate(CC.Description = substr(CC.Description,1,50)) %>%
+    distinct()
   mon <- toupper(month.abb[month(as.Date(end,format = "%m/%d/%Y"))])
   #save department dictionary
   write.table(depdict,paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
@@ -276,8 +278,8 @@ save_payroll <- function(start,end){
 ###############################################################################
 
 #Enter start and end date needed for payroll upload
-start <-"03/28/2021" 
-end <- "04/24/2021"
+start <-"05/23/2021" 
+end <- "06/19/2021"
 df <- labor(start,end)
 #If you need to update jobcode list for new jobcodes leave R and do that in excel
 #"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx"
