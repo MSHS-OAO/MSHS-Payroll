@@ -55,6 +55,7 @@ jcdict <- function(end){
   jobcode <- read_xlsx(paste0("J:/deans/Presidents/SixSigma/MSHS Productivity/",
                               "Productivity/Universal Data/Mapping/",
                               "MSHS_Jobcode_Mapping.xlsx"))
+  jobcode <- jobcode %>% filter(PAYROLL == "MSHQ")
   df <- left_join(df,jobcode,by=c("Job.Code"="J.C"))
   #create data frame with job codes not found in job code mapping file
   newjc <- filter(df,is.na(J.C.DESCRIPTION))
