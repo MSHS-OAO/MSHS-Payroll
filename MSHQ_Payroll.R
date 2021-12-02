@@ -45,7 +45,7 @@ labor <- function(start,end){
                                                     substr(Full.COA.for.Home,
                                                            12,16)))
   } else {
-    errorCondition("New Paycode")
+    stop("New Paycode(s)")
   }
   return(df)
 }
@@ -242,7 +242,7 @@ worktrend <- function(){
       mutate(PP.END.DATE = factor(PP.END.DATE))
     trend <<- trend
   } else {
-    errorCondition("data overlaps with old master")
+    stop("data overlaps with old master")
   }
   #create worked FTE trend table with newly appended data
   new_trend <- trend %>% 
