@@ -279,8 +279,8 @@ save_payroll <- function(start,end){
 ###############################################################################
 
 #Enter start and end date needed for payroll upload
-start <- "09/26/2021" 
-end <- "10/23/2021"
+start <- "10/24/2021" 
+end <- "11/20/2021"
 df <- labor(start,end)
 #If you need to update jobcode list for new jobcodes leave R and do that in excel
 #"J:/deans/Presidents/SixSigma/MSHS Productivity/Productivity/Useful Tools & Templates/Job Code Mappings/MSH MSQ Position Mappings.xlsx"
