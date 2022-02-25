@@ -75,7 +75,8 @@ jcdict <- function(end){
     #if no job codes then remove providers and format job code description
     df <- df %>%
       filter(PROVIDER == 0) %>%
-      mutate(Position.Code.Description = substr(Position.Code.Description,1,50))
+      mutate(Position.Code.Description = substr(Position.Code.Description,1,50),
+             Job.Code = substr(Job.Code,1,10))
   }
   #create job code dictionary
   jcdict <- df %>%
